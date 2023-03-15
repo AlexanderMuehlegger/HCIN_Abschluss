@@ -10,7 +10,7 @@ sr.print = no_op
 
 
 
-class Speach_Input():
+class Speech_Input():
     def __init__(self):
         self.init_Mic()
     

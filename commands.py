@@ -27,6 +27,7 @@ class CommandHandler:
             return -1
         
         if isinstance(id, list):
+            from terminal import Log
             Log.w("Specify Command!")
             return
 
@@ -36,3 +37,22 @@ class CommandHandler:
     def addCommand(self, command):
         command.id = len(self.commands)
         self.commands.append(command)
+
+class CommandHandlerSpeech(CommandHandler):
+    def __init__(self):
+        super()
+        self.commands = []
+
+    def runCommand(self, command):
+        from terminal import Log
+        Log.w(command)
+        if command is None:
+            return -1
+        
+        try:
+            id = [x for x in self.commands if command in x.command][0].id
+        except IndexError:
+            return -1
+        
+        self.commands[id].run()
+        return 1

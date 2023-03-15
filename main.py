@@ -2,7 +2,7 @@ from tabulate import tabulate
 import random
 import quotes
 from enums import SSP, Error, Status
-from commands import Command, CommandHandler
+from commands import Command, CommandHandler, CommandHandlerSpeech
 from statistics_1 import StatisticRes, StatisticSymb
 from terminal import Log
 import requests
@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.progress import track
 import time
 import threading
-from SpeechRec import Speach_Input
+from SpeechRec import Speech_Input
 from word2numberconv import text2int
 
 class SSP_Game:
@@ -37,20 +37,26 @@ class SSP_Game:
     def init(self):
         self.statisticRes = StatisticRes()
         self.statisticSymb = StatisticSymb()
-        self.commandHandler = CommandHandler()
 
         while True:
-            print("You want to use SpeachRecognition? (y/n)")
+            print("You want to use SpeechRecognition? (y/n)")
             text = input("> ")
             if text == "y" or text == "yes":
-                self.speechRec = Speach_Input()
-                self.processInput = self.processInputSpeach
+                self.speechRec = Speech_Input()
+                self.processInput = self.processInputSpeech
+                self.commandHandler = CommandHandlerSpeech()
+                self.init_SpeechCommands()
                 break
             elif text == "n" or text == "no":
+                self.commandHandler = CommandHandler()
+                self.init_nonSpeechCommands()
                 break
             else:
                 Log.e("Invalid Input")
 
+        
+
+    def init_nonSpeechCommands(self):
         exitCommand = Command(-1, exit, "Exit Programm", "exit")
         self.commandHandler.addCommand(exitCommand)
 
@@ -73,6 +79,31 @@ class SSP_Game:
         self.commandHandler.addCommand(printSymbolCommand)
 
         searchDataCommand = Command(-1, self.searchPlayerStat, "Get data from player by name", "-pstat")
+        self.commandHandler.addCommand(searchDataCommand)
+    
+    def init_SpeechCommands(self):
+        exitCommand = Command(-1, exit, "Exit Programm", ["beenden", "verlassen"])
+        self.commandHandler.addCommand(exitCommand)
+
+        printCommand = Command(-1, self.printHelp, "Print Help", ["hilfe"])
+        self.commandHandler.addCommand(printCommand)
+
+        statisticCommand = Command(-1, self.printStatistic, "Print current statistic", ["statistik ausgeben"])
+        self.commandHandler.addCommand(statisticCommand)
+
+        saveStatisticCommand = Command(-1, self.saveStatistic, "Saves and resets current statistic", ["statistik sichern", "statistik speichern"])
+        self.commandHandler.addCommand(saveStatisticCommand)
+
+        resetCommand = Command(-1, self.reset, "Resets current Statistic", ["zurücksetzen", "neustarten"])
+        self.commandHandler.addCommand(resetCommand)
+
+        difficultyCommand = Command(-1, self.setDifficulty, "Sets new Difficulty", ["schwierigkeit"])
+        self.commandHandler.addCommand(difficultyCommand)
+        
+        printSymbolCommand = Command(-1, self.printSymb, "Prints numbers of Symbols", ["symbol ausgeben"])
+        self.commandHandler.addCommand(printSymbolCommand)
+
+        searchDataCommand = Command(-1, self.searchPlayerStat, "Get data from player by name", ["suche statistik"])
         self.commandHandler.addCommand(searchDataCommand)
 
     def start(self):
@@ -375,19 +406,25 @@ class SSP_Game:
             return list(win_dic.keys())[list(win_dic.values()).index(match)].value
 
 
-    def processInputSpeach(self, msg='>', noNum=False, expected=[]):
+    def processInputSpeech(self, msg='>', noNum=False, expected=[]):
         print(msg)
         input("Press Enter if ready!")
         recognition = self.speechRec.read_input()
 
+        print(recognition)
         if noNum == False:
-            recognition = text2int(recognition)
+            temp = text2int(recognition)
+            if temp != "NO NUMBER":
+                recognition = temp
 
         if recognition in expected:
             Log.s("Recognized")
             return recognition
         else:
-            Log.e("Failed to Recognize")
+            if self.commandHandler.runCommand(recognition) == 1:
+                Log.s("Command Recognized")
+            else:
+                Log.e("Failed to Recognize")
 
     def processInput(self, msg='> ', noNum=False, expected=[]):
         text = input(msg)
