@@ -11,9 +11,10 @@ from rich.console import Console
 from rich.progress import track
 import time
 import threading
+from SpeechRec import Speach_Input
+from word2numberconv import text2int
 
 class SSP_Game:
-
     win = {
         SSP.Schere: [SSP.Papier, SSP.Echse],
         SSP.Papier: [SSP.Stein, SSP.Spock],
@@ -29,7 +30,6 @@ class SSP_Game:
     console = Console()
 
     def __init__(self):
-        
         self.status = Status.Stopped
         self.init()
 
@@ -38,6 +38,18 @@ class SSP_Game:
         self.statisticRes = StatisticRes()
         self.statisticSymb = StatisticSymb()
         self.commandHandler = CommandHandler()
+
+        while True:
+            print("You want to use SpeachRecognition? (y/n)")
+            text = input("> ")
+            if text == "y" or text == "yes":
+                self.speechRec = Speach_Input()
+                self.processInput = self.processInputSpeach
+                break
+            elif text == "n" or text == "no":
+                break
+            else:
+                Log.e("Invalid Input")
 
         exitCommand = Command(-1, exit, "Exit Programm", "exit")
         self.commandHandler.addCommand(exitCommand)
@@ -71,7 +83,7 @@ class SSP_Game:
     
     def setDifficulty(self):
         while True:
-            chosenDifficulty = self.processInput("Enter Difficulty 1-3:\n> ")
+            chosenDifficulty = self.processInput("Enter Difficulty 1-3:\n> ", expected=[1,2,3])
             if str(chosenDifficulty).isdigit():
                 if int(chosenDifficulty) in range(1, 3+1):
                     self.currDifficulty = chosenDifficulty
@@ -264,8 +276,11 @@ class SSP_Game:
             
             paused_msg = False
 
-            print(f"Enter digit between {min}-{max}: (Difficulty: {self.currDifficulty})")
-            player_pick = self.processInput()
+            while True:
+                print(f"Enter digit between {min}-{max}: (Difficulty: {self.currDifficulty})")
+                player_pick = self.processInput(expected=range(min, max))
+                if player_pick is not None:
+                    break
 
             try:
                 if player_pick == '' or Error(player_pick) is Error.NoNum:
@@ -360,7 +375,21 @@ class SSP_Game:
             return list(win_dic.keys())[list(win_dic.values()).index(match)].value
 
 
-    def processInput(self, msg='> ', noNum=False):
+    def processInputSpeach(self, msg='>', noNum=False, expected=[]):
+        print(msg)
+        input("Press Enter if ready!")
+        recognition = self.speechRec.read_input()
+
+        if noNum == False:
+            recognition = text2int(recognition)
+
+        if recognition in expected:
+            Log.s("Recognized")
+            return recognition
+        else:
+            Log.e("Failed to Recognize")
+
+    def processInput(self, msg='> ', noNum=False, expected=[]):
         text = input(msg)
         if self.commandHandler.runCommand(text) == 1:
             return ""
